@@ -143,6 +143,10 @@ require("lazy").setup({
       end,
     },
     {
+      "p00f/clangd_extensions.nvim",
+      event = "LspAttach",
+    },
+    {
       "nvim-treesitter/nvim-treesitter",
       build = ":TSUpdate",
       main = "nvim-treesitter.configs",
@@ -329,6 +333,8 @@ vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "WinEnter", "CmdWinEnte
   callback = function()
     if vim.bo.filetype == "qf" then
       vim.opt_local.laststatus = 0
+    else
+      vim.opt_local.laststatus = 2
     end
   end,
 })
@@ -342,6 +348,10 @@ vim.api.nvim_create_autocmd("LspAttach", {
       require("nvim-navic").attach(client, args.buf)
       vim.opt_local.winbar = [[%!luaeval("require('nvim-navic').get_location()")]]
       vim.api.nvim_input("<C-e>")
+    end
+
+    if client and client.name == "clangd" then
+      require("clangd_extensions")
     end
 
     vim.api.nvim_create_autocmd("CursorHold", {
