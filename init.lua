@@ -19,10 +19,9 @@ vim.g.maplocalleader = "\\"
 
 vim.keymap.set("n", "<Leader>c", "<Cmd>bdelete<CR>")
 vim.keymap.set("n", "<Leader>h", "<Cmd>nohlsearch<CR>")
-vim.keymap.set("n", "ga", vim.lsp.buf.code_action)
-vim.keymap.set("n", "gd", vim.lsp.buf.definition)
-vim.keymap.set("n", "gf", vim.lsp.buf.format)
-vim.keymap.set("n", "gr", vim.lsp.buf.references)
+vim.keymap.set("n", "<Leader>la", vim.lsp.buf.code_action)
+vim.keymap.set("n", "<Leader>lf", vim.lsp.buf.format)
+vim.keymap.set("n", "<Leader>lr", vim.lsp.buf.rename)
 
 vim.keymap.set({ "n", "i", "v" }, "<PageUp>", "<Cmd>normal <C-u><C-u><CR>")
 vim.keymap.set({ "n", "i", "v" }, "<PageDown>", "<Cmd>normal <C-d><C-d><CR>")
@@ -45,7 +44,6 @@ vim.diagnostic.config({
 vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
   border = "rounded",
 })
-
 vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
   border = "rounded",
 })
@@ -77,12 +75,28 @@ require("lazy").setup({
       "williamboman/mason-lspconfig.nvim",
       dependencies = {
         "williamboman/mason.nvim",
-        "neovim/nvim-lspconfig",
-        "hrsh7th/cmp-nvim-lsp",
       },
       cmd = {
         "LspInstall",
         "LspUninstall",
+      },
+      config = true,
+    },
+    {
+      "jay-babu/mason-null-ls.nvim",
+      dependencies = {
+        "williamboman/mason.nvim",
+      },
+      cmd = {
+        "NullLsInstall",
+        "NullLsUninstall",
+      },
+      config = true,
+    },
+    {
+      "neovim/nvim-lspconfig",
+      dependencies = {
+        "williamboman/mason-lspconfig.nvim",
       },
       ft = {
         "c",
@@ -91,55 +105,26 @@ require("lazy").setup({
         "python",
         "rust",
       },
-      config = function()
-        local exclude = {}
-        for lspconfig, exe in pairs({
-            clangd = "clangd",
-            lua_ls = "lua-language-server",
-            pyright = "pyright",
-            ruff_lsp = "ruff-lsp",
-            rust_analyzer = "rust-analyzer",
-        }) do
-          local exe_path = vim.fn.exepath(exe)
-          if exe_path ~= "" and exe_path:sub(1, data_path:len()) ~= data_path then
-            table.insert(exclude, lspconfig)
-          end
-        end
-
-        require("mason-lspconfig").setup({
-          automatic_installation = { exclude = exclude },
-        })
-      end,
     },
     {
-      "jay-babu/mason-null-ls.nvim",
+      "nvimtools/none-ls.nvim",
       dependencies = {
-        "williamboman/mason.nvim",
-        "nvimtools/none-ls.nvim",
-      },
-      cmd = {
-        "NullLsInstall",
-        "NullLsUninstall",
+        "jay-babu/mason-null-ls.nvim",
       },
       ft = {
         "python",
       },
-      config = function()
-        require("mason-null-ls").setup({
-          automatic_installation = {
-            exclude = { "mypy" },
-          },
-        })
-
+      opts = function()
         local sources = {}
+
         if vim.fn.executable("mypy") then
           table.insert(sources, require("null-ls.builtins.diagnostics.mypy"))
         end
 
-        require("null-ls").setup({
+        return {
           default_timeout = 15000,
           sources = sources,
-        })
+        }
       end,
     },
     {
@@ -226,10 +211,7 @@ require("lazy").setup({
         options = {
           separator_style = "slant",
           custom_filter = function(bufnr)
-            if vim.bo[bufnr].filetype == "qf" then
-              return false
-            end
-            return true
+            return vim.bo[bufnr].filetype ~= "qf"
           end,
         },
       },
@@ -305,8 +287,14 @@ require("lazy").setup({
       keys = {
         { "<Leader>ff", "<Cmd>Telescope find_files<CR>", "n", silent = true },
         { "<Leader>fg", "<Cmd>Telescope live_grep<CR>", "n", silent = true },
+        { "gd", "<Cmd>Telescope lsp_definitions<CR>", "n", silent = true },
+        { "gr", "<Cmd>Telescope lsp_references<CR>", "n", silent = true },
       },
-      config = true,
+      opts = {
+        defaults = {
+          sorting_strategy = "ascending",
+        },
+      },
     },
     {
       "nvim-neo-tree/neo-tree.nvim",
@@ -339,44 +327,14 @@ vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "WinEnter", "CmdWinEnte
   end,
 })
 
-vim.api.nvim_create_autocmd("LspAttach", {
-  callback = function(args)
-    local client = vim.lsp.get_client_by_id(args.data.client_id)
-
-    -- winbar
-    if client and client.server_capabilities.documentSymbolProvider then
-      require("nvim-navic").attach(client, args.buf)
-      vim.opt_local.winbar = [[%!luaeval("require('nvim-navic').get_location()")]]
-      vim.api.nvim_input("<C-e>")
-    end
-
-    if client and client.name == "clangd" then
-      require("clangd_extensions")
-    end
-
-    vim.api.nvim_create_autocmd("CursorHold", {
-      buffer = args.buf,
-      callback = function()
-        -- highlight symbol under cursor
-        vim.lsp.buf.document_highlight()
-
-        -- show diagnostics float
-        vim.diagnostic.open_float(nil, {
-          scope = "cursor",
-          source = "always",
-          close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
-          focusable = false,
-          border = "rounded",
-        })
-      end,
-    })
-
-    vim.api.nvim_create_autocmd("CursorMoved", {
-      buffer = args.buf,
-      callback = function()
-        -- remove symbol under cursor highlight
-        vim.lsp.buf.clear_references()
-      end,
+vim.api.nvim_create_autocmd("CursorHold", {
+  callback = function()
+    vim.diagnostic.open_float(nil, {
+      scope = "cursor",
+      source = "always",
+      close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
+      focusable = false,
+      border = "rounded",
     })
   end,
 })
@@ -391,36 +349,80 @@ vim.api.nvim_create_autocmd("FileType", {
     local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
     if vim.bo.filetype == "c" or vim.bo.filetype == "cpp" then
-      require("lspconfig").clangd.setup({
-        capabilities = capabilities,
-      })
+      if vim.fn.executable("clangd") then
+        require("lspconfig").clangd.setup({
+          capabilities = capabilities,
+        })
+      end
     elseif vim.bo.filetype == "lua" then
-      require("lspconfig").lua_ls.setup({
-        capabilities = capabilities,
-        settings = {
-          Lua = {
-            runtime = {
-              version = "LuaJIT",
-            },
-            workspace = {
-              checkThirdParty = false,
-              library = {
-                vim.env.VIMRUNTIME,
+      if vim.fn.executable("lua-language-server") then
+        require("lspconfig").lua_ls.setup({
+          capabilities = capabilities,
+          settings = {
+            Lua = {
+              runtime = {
+                version = "LuaJIT",
+              },
+              workspace = {
+                checkThirdParty = false,
+                library = {
+                  vim.env.VIMRUNTIME,
+                },
               },
             },
           },
-        },
-      })
+        })
+      end
     elseif vim.bo.filetype == "python" then
-      require("lspconfig").pyright.setup({
-        capabilities = capabilities,
-      })
-      require("lspconfig").ruff_lsp.setup({
-        capabilities = capabilities,
-      })
+      if vim.fn.executable("pyright") then
+        require("lspconfig").pyright.setup({
+          capabilities = capabilities,
+        })
+      end
+      if vim.fn.executable("ruff-lsp") then
+        require("lspconfig").ruff_lsp.setup({
+          capabilities = capabilities,
+        })
+      end
     elseif vim.bo.filetype == "rust" then
-      require("lspconfig").rust_analyzer.setup({
-        capabilities = capabilities,
+      if vim.fn.executable("rust-analyzer") then
+        require("lspconfig").rust_analyzer.setup({
+          capabilities = capabilities,
+        })
+      end
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(args)
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+    if not client then
+      return
+    end
+
+    if client.name == "clangd" then
+      require("clangd_extensions")
+    end
+
+    if client.server_capabilities.documentSymbolProvider then
+      require("nvim-navic").attach(client, args.buf)
+      vim.opt_local.winbar = [[%!luaeval("require('nvim-navic').get_location()")]]
+      vim.api.nvim_input("<C-e>")
+    end
+
+    if client.server_capabilities.documentHighlightProvider then
+      vim.api.nvim_create_autocmd("CursorHold", {
+        buffer = args.buf,
+        callback = function()
+          vim.lsp.buf.document_highlight()
+        end,
+      })
+      vim.api.nvim_create_autocmd("CursorMoved", {
+        buffer = args.buf,
+        callback = function()
+          vim.lsp.buf.clear_references()
+        end,
       })
     end
   end,
