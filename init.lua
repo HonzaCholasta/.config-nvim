@@ -117,7 +117,7 @@ require("lazy").setup({
       opts = function()
         local sources = {}
 
-        if vim.fn.executable("mypy") then
+        if vim.fn.executable("mypy") ~= 0 then
           table.insert(sources, require("null-ls.builtins.diagnostics.mypy"))
         end
 
@@ -129,14 +129,17 @@ require("lazy").setup({
     },
     {
       "p00f/clangd_extensions.nvim",
-      event = "LspAttach",
+      ft = {
+        "c",
+        "cpp",
+      },
     },
     {
       "nvim-treesitter/nvim-treesitter",
       build = ":TSUpdate",
       main = "nvim-treesitter.configs",
       opts = {
-        auto_install = vim.fn.executable("tree-sitter") and true or false,
+        auto_install = vim.fn.executable("tree-sitter") ~= 0,
         highlight = { enable = true },
         indent = { enable = true },
       },
@@ -349,13 +352,13 @@ vim.api.nvim_create_autocmd("FileType", {
     local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
     if vim.bo.filetype == "c" or vim.bo.filetype == "cpp" then
-      if vim.fn.executable("clangd") then
+      if vim.fn.executable("clangd") ~= 0 then
         require("lspconfig").clangd.setup({
           capabilities = capabilities,
         })
       end
     elseif vim.bo.filetype == "lua" then
-      if vim.fn.executable("lua-language-server") then
+      if vim.fn.executable("lua-language-server") ~= 0 then
         require("lspconfig").lua_ls.setup({
           capabilities = capabilities,
           settings = {
@@ -374,18 +377,18 @@ vim.api.nvim_create_autocmd("FileType", {
         })
       end
     elseif vim.bo.filetype == "python" then
-      if vim.fn.executable("pyright") then
+      if vim.fn.executable("pyright") ~= 0 then
         require("lspconfig").pyright.setup({
           capabilities = capabilities,
         })
       end
-      if vim.fn.executable("ruff-lsp") then
+      if vim.fn.executable("ruff-lsp") ~= 0 then
         require("lspconfig").ruff_lsp.setup({
           capabilities = capabilities,
         })
       end
     elseif vim.bo.filetype == "rust" then
-      if vim.fn.executable("rust-analyzer") then
+      if vim.fn.executable("rust-analyzer") ~= 0 then
         require("lspconfig").rust_analyzer.setup({
           capabilities = capabilities,
         })
@@ -402,7 +405,9 @@ vim.api.nvim_create_autocmd("LspAttach", {
     end
 
     if client.name == "clangd" then
-      require("clangd_extensions")
+      local inlay_hints = require("clangd_extensions.inlay_hints")
+      inlay_hints.setup_autocmd()
+      inlay_hints.set_inlay_hints()
     end
 
     if client.server_capabilities.documentSymbolProvider then
@@ -412,13 +417,20 @@ vim.api.nvim_create_autocmd("LspAttach", {
     end
 
     if client.server_capabilities.documentHighlightProvider then
+      local group = vim.api.nvim_create_augroup("documentHighlight", {})
+      vim.api.nvim_clear_autocmds({
+        group = group,
+        buffer = args.buf,
+      })
       vim.api.nvim_create_autocmd("CursorHold", {
+        group = group,
         buffer = args.buf,
         callback = function()
           vim.lsp.buf.document_highlight()
         end,
       })
       vim.api.nvim_create_autocmd("CursorMoved", {
+        group = group,
         buffer = args.buf,
         callback = function()
           vim.lsp.buf.clear_references()
