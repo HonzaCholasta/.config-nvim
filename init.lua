@@ -15,18 +15,39 @@ vim.opt.whichwrap = "b,s,<,>,[,]"
 vim.opt.updatetime = 500
 
 vim.g.mapleader = " "
-vim.g.maplocalleader = "\\"
+vim.g.maplocalleader = " "
 
-vim.keymap.set("n", "<Leader>c", "<Cmd>bdelete<CR>")
-vim.keymap.set("n", "<Leader>h", "<Cmd>nohlsearch<CR>")
-vim.keymap.set("n", "<Leader>la", vim.lsp.buf.code_action)
-vim.keymap.set("n", "<Leader>lf", vim.lsp.buf.format)
-vim.keymap.set("n", "<Leader>lr", vim.lsp.buf.rename)
+vim.keymap.set({ "n", "i", "v" }, [[<PageUp>]], [[<Cmd>normal <C-u><C-u><CR>]])
+vim.keymap.set({ "n", "i", "v" }, [[<PageDown>]], [[<Cmd>normal <C-d><C-d><CR>]])
 
-vim.keymap.set({ "n", "i", "v" }, "<PageUp>", "<Cmd>normal <C-u><C-u><CR>")
-vim.keymap.set({ "n", "i", "v" }, "<PageDown>", "<Cmd>normal <C-d><C-d><CR>")
+vim.keymap.set("n", [[K]], [[<Cmd>Lspsaga hover_doc<CR>]])
+vim.keymap.set("n", [[<Leader>c]], [[<Cmd>bdelete<CR>]])
+vim.keymap.set("n", [[<Leader>h]], [[<Cmd>nohlsearch<CR>]])
+vim.keymap.set("n", [[<Leader>la]], [[<Cmd>Lspsaga code_action<CR>]])
+vim.keymap.set("n", [[<Leader>lf]], vim.lsp.buf.format)
+vim.keymap.set("n", [[<Leader>lr]], [[<Cmd>Lspsaga rename<CR>]])
 
-vim.keymap.set("v", "d", "\"_d")
+vim.keymap.set("v", [[d]], [["_d]])
+vim.keymap.set("v", [[J]], [[:move '>+1<CR>gv=gv]], { silent = true })
+vim.keymap.set("v", [[K]], [[:move '<-2<CR>gv=gv]], { silent = true })
+
+vim.keymap.set("n", [[<Leader>gr]], [[<Cmd>Gitsigns reset_hunk<CR>]])
+vim.keymap.set("n", [[<Leader>gs]], [[<Cmd>Gitsigns stage_hunk<CR>]])
+vim.keymap.set("n", [[<Leader>gu]], [[<Cmd>Gitsigns undo_stage_hunk<CR>]])
+vim.keymap.set("v", [[<Leader>gr]], [[<Cmd>'<,'>Gitsigns reset_hunk<CR>]])
+vim.keymap.set("v", [[<Leader>gs]], [[<Cmd>'<,'>Gitsigns stage_hunk<CR>]])
+vim.keymap.set("v", [[<Leader>gu]], [[<Cmd>'<,'>Gitsigns undo_stage_hunk<CR>]])
+
+vim.keymap.set("n", [[<Leader>ff]], [[<Cmd>Telescope find_files<CR>]])
+vim.keymap.set("n", [[<Leader>fg]], [[<Cmd>Telescope live_grep<CR>]])
+vim.keymap.set(
+  "n", [[<Leader>fw]], [[":Telescope live_grep<CR>\\b" . expand("<cword>") . "\\b"]],
+  { expr = true, silent = true }
+)
+vim.keymap.set("n", [[gd]], [[<Cmd>Telescope lsp_definitions<CR>]])
+vim.keymap.set("n", [[gr]], [[<Cmd>Telescope lsp_references<CR>]])
+
+vim.keymap.set("n", [[<Leader>e]], [[<Cmd>Neotree toggle<CR>]])
 
 vim.diagnostic.config({
   virtual_text = false,
@@ -39,13 +60,6 @@ vim.diagnostic.config({
     },
   },
   severity_sort = true,
-})
-
-vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
-  border = "rounded",
-})
-vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
-  border = "rounded",
 })
 
 require("lazy").setup({
@@ -135,6 +149,29 @@ require("lazy").setup({
       },
     },
     {
+      "nvimdev/lspsaga.nvim",
+      dependencies = {
+        "nvim-treesitter/nvim-treesitter",
+        "nvim-tree/nvim-web-devicons",
+      },
+      cmd = "Lspsaga",
+      opts = {
+        ui = {
+          border = "rounded",
+        },
+        code_action = {
+          keys = {
+            quit = "<Esc>",
+          },
+        },
+        rename = {
+          keys = {
+            quit = "<Esc>",
+          },
+        },
+      },
+    },
+    {
       "nvim-treesitter/nvim-treesitter",
       build = ":TSUpdate",
       main = "nvim-treesitter.configs",
@@ -196,12 +233,6 @@ require("lazy").setup({
     {
       "lewis6991/gitsigns.nvim",
       cmd = "Gitsigns",
-      keys = {
-        { "<Leader>gr", "<Cmd>Gitsigns reset_hunk<CR>", "n", silent = true },
-        { "<Leader>gs", "<Cmd>Gitsigns stage_hunk<CR>", "n", silent = true },
-        { "<Leader>gr", "<Cmd>Gitsigns reset_hunk '<,'><CR>", "v", silent = true },
-        { "<Leader>gs", "<Cmd>Gitsigns stage_hunk '<,'><CR>", "v", silent = true },
-      },
       config = true,
     },
     {
@@ -287,12 +318,6 @@ require("lazy").setup({
         "nvim-tree/nvim-web-devicons",
       },
       cmd = "Telescope",
-      keys = {
-        { "<Leader>ff", "<Cmd>Telescope find_files<CR>", "n", silent = true },
-        { "<Leader>fg", "<Cmd>Telescope live_grep<CR>", "n", silent = true },
-        { "gd", "<Cmd>Telescope lsp_definitions<CR>", "n", silent = true },
-        { "gr", "<Cmd>Telescope lsp_references<CR>", "n", silent = true },
-      },
       opts = {
         defaults = {
           sorting_strategy = "ascending",
@@ -308,9 +333,6 @@ require("lazy").setup({
         "nvim-tree/nvim-web-devicons",
       },
       cmd = "Neotree",
-      keys = {
-        { "<Leader>e", "<Cmd>Neotree toggle<CR>", "n", silent = true },
-      },
       opts = {
         source_selector = {
           winbar = true,
