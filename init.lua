@@ -2,7 +2,7 @@
 local data_path = vim.fn.stdpath("data") .. ""
 local lazy_path = data_path .. "/lazy/lazy.nvim"
 
-vim.opt.rtp:prepend(lazy_path)
+vim.opt.runtimepath:prepend(lazy_path)
 vim.opt.number = true
 vim.opt.shiftwidth = 4
 vim.opt.tabstop = 4
@@ -407,7 +407,11 @@ vim.api.nvim_create_autocmd("FileType", {
         })
       end
     elseif vim.bo.filetype == "python" then
-      if vim.fn.executable("pyright") ~= 0 then
+      if vim.fn.executable("basedpyright-langserver") ~= 0 then
+        require("lspconfig").basedpyright.setup({
+          capabilities = capabilities,
+        })
+      elseif vim.fn.executable("pyright-langserver") ~= 0 then
         require("lspconfig").pyright.setup({
           capabilities = capabilities,
         })
