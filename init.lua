@@ -153,16 +153,24 @@ require("lazy").setup({
       dependencies = {
         "nvim-treesitter/nvim-treesitter",
         "nvim-tree/nvim-web-devicons",
+        "lewis6991/gitsigns.nvim",
       },
       cmd = "Lspsaga",
       opts = {
         ui = {
           border = "rounded",
+          code_action = "",
         },
         code_action = {
+          num_shortcut = false,
+          show_server_name = true,
+          extend_gitsigns = true,
           keys = {
             quit = "<Esc>",
           },
+        },
+        lightbulb = {
+          virtual_text = false,
         },
         rename = {
           keys = {
