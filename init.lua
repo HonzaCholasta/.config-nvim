@@ -142,13 +142,6 @@ require("lazy").setup({
       end,
     },
     {
-      "p00f/clangd_extensions.nvim",
-      ft = {
-        "c",
-        "cpp",
-      },
-    },
-    {
       "nvimdev/lspsaga.nvim",
       dependencies = {
         "nvim-treesitter/nvim-treesitter",
@@ -262,7 +255,6 @@ require("lazy").setup({
       "nvim-lualine/lualine.nvim",
       dependencies = {
         "nvim-tree/nvim-web-devicons",
-        "SmiteshP/nvim-navic",
       },
       opts = {
         options = {
@@ -279,9 +271,6 @@ require("lazy").setup({
       event = "LspAttach",
       opts = {
         highlight = true,
-        lsp = {
-          auto_attach = true,
-        },
       },
     },
     {
@@ -341,11 +330,42 @@ require("lazy").setup({
         "nvim-tree/nvim-web-devicons",
       },
       cmd = "Neotree",
-      opts = {
-        source_selector = {
-          winbar = true,
-        },
-      },
+      config = function()
+        require("neo-tree").setup({
+          close_if_last_window = true,
+          source_selector = {
+            winbar = true,
+            content_layout = "center",
+            separator = { left = "", right = "" },
+            show_separator_on_edge = true,
+          },
+          filesystem = {
+            follow_current_file = { enabled = true },
+          },
+        })
+
+        local tab_active_hl = vim.api.nvim_get_hl(0, {
+          name = "NeoTreeTabActive",
+        }) --[[@as vim.api.keyset.highlight]]
+        local tab_inactive_hl = vim.api.nvim_get_hl(0, {
+          name = "NeoTreeTabInactive",
+        }) --[[@as vim.api.keyset.highlight]]
+        local separator_active_hl = vim.api.nvim_get_hl(0, {
+          name = "NeoTreeTabSeparatorActive",
+        }) --[[@as vim.api.keyset.highlight]]
+        local separator_inactive_hl = vim.api.nvim_get_hl(0, {
+          name = "NeoTreeTabSeparatorInactive",
+        }) --[[@as vim.api.keyset.highlight]]
+
+        separator_active_hl.fg = tab_inactive_hl.bg
+        separator_inactive_hl.fg = tab_inactive_hl.bg
+        separator_inactive_hl.bg = tab_active_hl.bg
+        tab_inactive_hl.bg = tab_active_hl.bg
+
+        vim.api.nvim_set_hl(0, "NeoTreeTabInactive", tab_inactive_hl)
+        vim.api.nvim_set_hl(0, "NeoTreeTabSeparatorActive", separator_active_hl)
+        vim.api.nvim_set_hl(0, "NeoTreeTabSeparatorInactive", separator_inactive_hl)
+      end,
     },
   },
 })
@@ -385,6 +405,7 @@ vim.api.nvim_create_autocmd("FileType", {
       if vim.fn.executable("clangd") ~= 0 then
         require("lspconfig").clangd.setup({
           capabilities = capabilities,
+          cmd = { "clangd", "--completion-style=detailed" },
         })
       end
     elseif vim.bo.filetype == "lua" then
@@ -438,12 +459,6 @@ vim.api.nvim_create_autocmd("LspAttach", {
       return
     end
 
-    if client.name == "clangd" then
-      local inlay_hints = require("clangd_extensions.inlay_hints")
-      inlay_hints.setup_autocmd()
-      inlay_hints.set_inlay_hints()
-    end
-
     if client.server_capabilities.documentSymbolProvider then
       require("nvim-navic").attach(client, args.buf)
       vim.opt_local.winbar = [[%!luaeval("require('nvim-navic').get_location()")]]
@@ -451,7 +466,9 @@ vim.api.nvim_create_autocmd("LspAttach", {
     end
 
     if client.server_capabilities.documentHighlightProvider then
-      local group = vim.api.nvim_create_augroup("documentHighlight", {})
+      local group = vim.api.nvim_create_augroup("documentHighlight", {
+        clear = false,
+      })
       vim.api.nvim_clear_autocmds({
         group = group,
         buffer = args.buf,
@@ -470,6 +487,27 @@ vim.api.nvim_create_autocmd("LspAttach", {
           vim.lsp.buf.clear_references()
         end,
       })
+    end
+
+    if client.server_capabilities.inlayHintProvider then
+      local function toggle_inlay_hints()
+        vim.lsp.inlay_hint.enable(vim.fn.mode(false) == "n", { bufnr = args.buf })
+      end
+
+      local group = vim.api.nvim_create_augroup("inlayHints", {
+        clear = false,
+      })
+      vim.api.nvim_clear_autocmds({
+        group = group,
+        buffer = args.buf,
+      })
+      vim.api.nvim_create_autocmd("ModeChanged", {
+        group = group,
+        buffer = args.buf,
+        callback = toggle_inlay_hints,
+      })
+
+      toggle_inlay_hints()
     end
   end,
 })
