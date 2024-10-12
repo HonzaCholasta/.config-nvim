@@ -370,6 +370,10 @@ require("lazy").setup({
   },
 })
 
+vim.api.nvim_create_autocmd("BufReadPost", {
+  command = [[silent! normal! g'"zvzz]],
+})
+
 vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "WinEnter", "CmdWinEnter" }, {
   callback = function()
     if vim.bo.filetype == "qf" then
