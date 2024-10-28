@@ -1,6 +1,5 @@
 -- git clone https://github.com/folke/lazy.nvim ~/.local/share/nvim/lazy/lazy.nvim
-local data_path = vim.fn.stdpath("data") .. ""
-local lazy_path = data_path .. "/lazy/lazy.nvim"
+local lazy_path = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 
 vim.opt.runtimepath:prepend(lazy_path)
 vim.opt.number = true
@@ -159,7 +158,7 @@ require("lazy").setup({
           show_server_name = true,
           extend_gitsigns = true,
           keys = {
-            quit = "<Esc>",
+            quit = [[<Esc>]],
           },
         },
         lightbulb = {
@@ -167,8 +166,11 @@ require("lazy").setup({
         },
         rename = {
           keys = {
-            quit = "<Esc>",
+            quit = [[<Esc>]],
           },
+        },
+        symbol_in_winbar = {
+          enable = false,
         },
       },
     },
@@ -207,7 +209,7 @@ require("lazy").setup({
             { name = "buffer" },
           }),
           mapping = cmp.mapping.preset.insert({
-            ["<CR>"] = cmp.mapping.confirm({ select = true }),
+            [ [[<CR>]] ] = cmp.mapping.confirm({ select = true }),
           }),
           formatting = {
             format = lspkind.cmp_format(),
@@ -332,7 +334,6 @@ require("lazy").setup({
       cmd = "Neotree",
       config = function()
         require("neo-tree").setup({
-          close_if_last_window = true,
           source_selector = {
             winbar = true,
             content_layout = "center",
@@ -370,8 +371,8 @@ require("lazy").setup({
   },
 })
 
-vim.api.nvim_create_autocmd("BufReadPost", {
-  command = [[silent! normal! g'"zvzz]],
+vim.api.nvim_create_autocmd("BufRead", {
+  command = [[silent! normal! g'"]],
 })
 
 vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "WinEnter", "CmdWinEnter" }, {
