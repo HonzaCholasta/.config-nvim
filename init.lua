@@ -11,6 +11,7 @@ vim.opt.display = "lastline,uhex"
 vim.opt.listchars = "space:·,tab:↦ ,nbsp:␣,eol:↵"
 vim.opt.signcolumn = "yes"
 vim.opt.whichwrap = "b,s,<,>,[,]"
+vim.opt.wrap = false
 vim.opt.updatetime = 500
 
 vim.g.mapleader = " "
@@ -66,9 +67,16 @@ require("lazy").setup({
     {
       "folke/tokyonight.nvim",
       priority = 1000,
-      config = function(_, opts)
-        require("tokyonight").setup(opts)
+      config = function()
+        require("tokyonight").setup()
         vim.cmd.colorscheme("tokyonight")
+      end,
+    },
+    {
+      "rcarriga/nvim-notify",
+      priority = 999,
+      config = function()
+        vim.notify = require("notify")
       end,
     },
     {
@@ -123,15 +131,16 @@ require("lazy").setup({
       "nvimtools/none-ls.nvim",
       dependencies = {
         "jay-babu/mason-null-ls.nvim",
-      },
-      ft = {
-        "python",
+        "lewis6991/gitsigns.nvim",
       },
       opts = function()
-        local sources = {}
+        local builtins = require("null-ls").builtins
 
+        local sources = {
+          builtins.code_actions.gitsigns,
+        }
         if vim.fn.executable("mypy") ~= 0 then
-          table.insert(sources, require("null-ls.builtins.diagnostics.mypy"))
+          table.insert(sources, builtins.diagnostics.mypy)
         end
 
         return {
@@ -145,7 +154,6 @@ require("lazy").setup({
       dependencies = {
         "nvim-treesitter/nvim-treesitter",
         "nvim-tree/nvim-web-devicons",
-        "lewis6991/gitsigns.nvim",
       },
       cmd = "Lspsaga",
       opts = {
@@ -156,7 +164,6 @@ require("lazy").setup({
         code_action = {
           num_shortcut = false,
           show_server_name = true,
-          extend_gitsigns = true,
           keys = {
             quit = [[<Esc>]],
           },
@@ -172,6 +179,29 @@ require("lazy").setup({
         symbol_in_winbar = {
           enable = false,
         },
+      },
+    },
+    {
+      "linrongbin16/lsp-progress.nvim",
+      opts = {
+        series_format = function(title, message, percentage, done)
+          if done then
+            percentage = 100
+          end
+          return string.format("%s (%.0f%%)", title, percentage)
+        end,
+        client_format = function(client_name, spinner, series_messages)
+          if #series_messages == 0 then
+            return nil
+          end
+          return spinner .. " " .. series_messages[#series_messages]
+        end,
+        format = function(client_messages)
+          if #client_messages == 0 then
+            return ""
+          end
+          return client_messages[#client_messages]
+        end,
       },
     },
     {
@@ -257,16 +287,53 @@ require("lazy").setup({
       "nvim-lualine/lualine.nvim",
       dependencies = {
         "nvim-tree/nvim-web-devicons",
+        "linrongbin16/lsp-progress.nvim",
       },
-      opts = {
-        options = {
-          disabled_filetypes = {
-            statusline = { "neo-tree" },
+      opts = function()
+        local lsp = {
+          function()
+            local client_names = {}
+            local has_null_ls = false
+            for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
+              if client.name == "null-ls" then
+                has_null_ls = true
+              else
+                table.insert(client_names, client.name)
+              end
+            end
+            if has_null_ls then
+              local sources = require("null-ls").get_source({ filetype = vim.bo.filetype })
+              for _, source in ipairs(sources) do
+                table.insert(client_names, source.name)
+              end
+            end
+            return " " .. table.concat(client_names, ", ")
+          end,
+          cond = function()
+            return #vim.lsp.get_clients({ bufnr = 0 }) > 0
+          end,
+        }
+        local lsp_progress = require("lsp-progress").progress
+
+        return {
+          options = {
+            disabled_filetypes = {
+              statusline = { "neo-tree" },
+            },
+            component_separators = "",
+            section_separators = " ",
           },
-          component_separators = { left = "", right = "" },
-          section_separators = { left = "", right = "" },
-        },
-      },
+          sections = {
+            lualine_b = {},
+            lualine_c = { "filetype", lsp, "diagnostics", lsp_progress },
+            lualine_x = { "diff", "branch" },
+            lualine_y = {},
+          },
+          inactive_sections = {
+            lualine_c = {},
+          },
+        }
+      end,
     },
     {
       "SmiteshP/nvim-navic",
@@ -299,13 +366,6 @@ require("lazy").setup({
             Misc = { color = colors.purple },
           },
         }
-      end,
-    },
-    {
-      "rcarriga/nvim-notify",
-      priority = 999,
-      config = function()
-        vim.notify = require("notify")
       end,
     },
     {
@@ -466,8 +526,10 @@ vim.api.nvim_create_autocmd("LspAttach", {
 
     if client.server_capabilities.documentSymbolProvider then
       require("nvim-navic").attach(client, args.buf)
+      if vim.opt.winbar == "" then
+        vim.api.nvim_input([[<C-e>]])
+      end
       vim.opt_local.winbar = [[%!luaeval("require('nvim-navic').get_location()")]]
-      vim.api.nvim_input("<C-e>")
     end
 
     if client.server_capabilities.documentHighlightProvider then
