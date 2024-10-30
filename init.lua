@@ -4,7 +4,6 @@ local lazy_path = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 vim.opt.runtimepath:prepend(lazy_path)
 vim.opt.number = true
 vim.opt.shiftwidth = 4
-vim.opt.tabstop = 4
 vim.opt.expandtab = true
 vim.opt.cursorline = true
 vim.opt.display = "lastline,uhex"
@@ -131,14 +130,11 @@ require("lazy").setup({
       "nvimtools/none-ls.nvim",
       dependencies = {
         "jay-babu/mason-null-ls.nvim",
-        "lewis6991/gitsigns.nvim",
       },
       opts = function()
         local builtins = require("null-ls").builtins
 
-        local sources = {
-          builtins.code_actions.gitsigns,
-        }
+        local sources = {}
         if vim.fn.executable("mypy") ~= 0 then
           table.insert(sources, builtins.diagnostics.mypy)
         end
@@ -154,8 +150,10 @@ require("lazy").setup({
       dependencies = {
         "nvim-treesitter/nvim-treesitter",
         "nvim-tree/nvim-web-devicons",
+        "lewis6991/gitsigns.nvim",
       },
       cmd = "Lspsaga",
+      event = "LspAttach",
       opts = {
         ui = {
           border = "rounded",
@@ -164,6 +162,7 @@ require("lazy").setup({
         code_action = {
           num_shortcut = false,
           show_server_name = true,
+          extend_gitsigns = true,
           keys = {
             quit = [[<Esc>]],
           },
@@ -188,9 +187,20 @@ require("lazy").setup({
           if done then
             percentage = 100
           end
-          return string.format("%s (%.0f%%)", title, percentage)
+          if message and message ~= "" then
+            if title and title ~= "" then
+              message = title .. " " .. message
+            end
+          else
+            if title and title ~= "" then
+              message = title
+            else
+              return
+            end
+          end
+          return string.format("%s (%.0f%%)", message, percentage)
         end,
-        client_format = function(client_name, spinner, series_messages)
+        client_format = function(_, spinner, series_messages)
           if #series_messages == 0 then
             return nil
           end
@@ -290,30 +300,46 @@ require("lazy").setup({
         "linrongbin16/lsp-progress.nvim",
       },
       opts = function()
-        local lsp = {
+        local providers = {
           function()
-            local client_names = {}
-            local has_null_ls = false
-            for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
-              if client.name == "null-ls" then
-                has_null_ls = true
-              else
-                table.insert(client_names, client.name)
+            local provider_names = {}
+
+            if vim.treesitter.highlighter.active[vim.api.nvim_get_current_buf()] ~= nil then
+              table.insert(provider_names, "TS")
+            end
+
+            local lsp_clients = vim.lsp.get_clients({ bufnr = 0 })
+            if #lsp_clients > 0 then
+              local has_null_ls = false
+              for _, client in ipairs(lsp_clients) do
+                if client.name == "null-ls" then
+                  has_null_ls = true
+                else
+                  table.insert(provider_names, client.name)
+                end
+              end
+              if has_null_ls then
+                local sources = require("null-ls").get_source({ filetype = vim.bo.filetype })
+                for _, source in ipairs(sources) do
+                  table.insert(provider_names, source.name)
+                end
               end
             end
-            if has_null_ls then
-              local sources = require("null-ls").get_source({ filetype = vim.bo.filetype })
-              for _, source in ipairs(sources) do
-                table.insert(client_names, source.name)
-              end
-            end
-            return " " .. table.concat(client_names, ", ")
+
+            return " " .. table.concat(provider_names, ", ")
           end,
           cond = function()
-            return #vim.lsp.get_clients({ bufnr = 0 }) > 0
+            return
+              vim.treesitter.highlighter.active[vim.api.nvim_get_current_buf()] ~= nil or
+              #vim.lsp.get_clients({ bufnr = 0 }) > 0
           end,
         }
+
         local lsp_progress = require("lsp-progress").progress
+
+        local function indent()
+          return (vim.bo.expandtab and "␣" or "↹") .. " " .. vim.fn.shiftwidth()
+        end
 
         return {
           options = {
@@ -325,8 +351,8 @@ require("lazy").setup({
           },
           sections = {
             lualine_b = {},
-            lualine_c = { "filetype", lsp, "diagnostics", lsp_progress },
-            lualine_x = { "diff", "branch" },
+            lualine_c = { indent, "filetype", providers, lsp_progress },
+            lualine_x = { "diagnostics", "diff", "branch" },
             lualine_y = {},
           },
           inactive_sections = {
@@ -461,7 +487,6 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = function()
     if vim.bo.filetype == "lua" then
       vim.opt_local.shiftwidth = 2
-      vim.opt_local.tabstop = 2
     end
 
     local capabilities = require("cmp_nvim_lsp").default_capabilities()
