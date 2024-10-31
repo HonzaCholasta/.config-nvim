@@ -18,17 +18,17 @@ vim.g.maplocalleader = " "
 
 vim.keymap.set({ "n", "i", "v" }, [[<PageUp>]], [[<Cmd>normal <C-u><C-u><CR>]])
 vim.keymap.set({ "n", "i", "v" }, [[<PageDown>]], [[<Cmd>normal <C-d><C-d><CR>]])
+vim.keymap.set("v", [[d]], [["_d]])
+
+vim.keymap.set("v", [[<S-Up>]], [[:move '<-2<CR>gv=gv]], { silent = true })
+vim.keymap.set("v", [[<S-Down>]], [[:move '>+1<CR>gv=gv]], { silent = true })
 
 vim.keymap.set("n", [[K]], [[<Cmd>Lspsaga hover_doc<CR>]])
 vim.keymap.set("n", [[<Leader>c]], [[<Cmd>bdelete<CR>]])
 vim.keymap.set("n", [[<Leader>h]], [[<Cmd>nohlsearch<CR>]])
 vim.keymap.set("n", [[<Leader>la]], [[<Cmd>Lspsaga code_action<CR>]])
 vim.keymap.set("n", [[<Leader>lf]], vim.lsp.buf.format)
-vim.keymap.set("n", [[<Leader>lr]], [[<Cmd>Lspsaga rename<CR>]])
-
-vim.keymap.set("v", [[d]], [["_d]])
-vim.keymap.set("v", [[J]], [[:move '>+1<CR>gv=gv]], { silent = true })
-vim.keymap.set("v", [[K]], [[:move '<-2<CR>gv=gv]], { silent = true })
+vim.keymap.set("n", [[<Leader>lr]], [[<Cmd>Lspsaga rename<CR>i<End>]])
 
 vim.keymap.set("n", [[<Leader>gr]], [[<Cmd>Gitsigns reset_hunk<CR>]])
 vim.keymap.set("n", [[<Leader>gs]], [[<Cmd>Gitsigns stage_hunk<CR>]])
@@ -130,11 +130,13 @@ require("lazy").setup({
       "nvimtools/none-ls.nvim",
       dependencies = {
         "jay-babu/mason-null-ls.nvim",
+        "lewis6991/gitsigns.nvim",
       },
       opts = function()
         local builtins = require("null-ls").builtins
 
         local sources = {}
+        table.insert(sources, builtins.code_actions.gitsigns)
         if vim.fn.executable("mypy") ~= 0 then
           table.insert(sources, builtins.diagnostics.mypy)
         end
@@ -150,7 +152,6 @@ require("lazy").setup({
       dependencies = {
         "nvim-treesitter/nvim-treesitter",
         "nvim-tree/nvim-web-devicons",
-        "lewis6991/gitsigns.nvim",
       },
       cmd = "Lspsaga",
       event = "LspAttach",
@@ -162,15 +163,18 @@ require("lazy").setup({
         code_action = {
           num_shortcut = false,
           show_server_name = true,
-          extend_gitsigns = true,
           keys = {
             quit = [[<Esc>]],
           },
         },
         lightbulb = {
           virtual_text = false,
+          ignore = {
+            clients = { "null-ls" },
+          },
         },
         rename = {
+          in_select = false,
           keys = {
             quit = [[<Esc>]],
           },
@@ -200,9 +204,14 @@ require("lazy").setup({
           end
           return string.format("%s (%.0f%%)", message, percentage)
         end,
-        client_format = function(_, spinner, series_messages)
+        client_format = function(client_name, spinner, series_messages)
+          if client_name == "null-ls" then
+            series_messages = vim.tbl_filter(function(series_message)
+              return not vim.startswith(series_message, "code_action")
+            end, series_messages)
+          end
           if #series_messages == 0 then
-            return nil
+            return
           end
           return spinner .. " " .. series_messages[#series_messages]
         end,
@@ -276,7 +285,14 @@ require("lazy").setup({
     {
       "lewis6991/gitsigns.nvim",
       cmd = "Gitsigns",
-      config = true,
+      opts = {
+        signs = {
+          changedelete = { text = "┃" },
+        },
+        signs_staged = {
+          changedelete = { text = "┃" },
+        },
+      },
     },
     {
       "akinsho/bufferline.nvim",
@@ -341,23 +357,30 @@ require("lazy").setup({
           return (vim.bo.expandtab and "␣" or "↹") .. " " .. vim.fn.shiftwidth()
         end
 
+        local diff = {
+          "diff",
+          symbols = {
+            added = "󰜄 ",
+            modified = "󱗝 ",
+            removed = "󰛲 ",
+          },
+        }
+
         return {
           options = {
-            disabled_filetypes = {
-              statusline = { "neo-tree" },
-            },
             component_separators = "",
             section_separators = " ",
           },
           sections = {
             lualine_b = {},
             lualine_c = { indent, "filetype", providers, lsp_progress },
-            lualine_x = { "diagnostics", "diff", "branch" },
+            lualine_x = { "diagnostics", diff, "branch" },
             lualine_y = {},
           },
           inactive_sections = {
             lualine_c = {},
           },
+          extensions = { "neo-tree" },
         }
       end,
     },
@@ -390,6 +413,8 @@ require("lazy").setup({
             Info = { color = colors.info },
             Hint = { color = colors.hint },
             Misc = { color = colors.purple },
+            GitAdd = { text = "│" },
+            GitChange = { text = "│" },
           },
         }
       end,
