@@ -202,7 +202,10 @@ require("lazy").setup({
               return
             end
           end
-          return string.format("%s (%.0f%%)", message, percentage)
+          if percentage then
+            message = string.format("%s (%.0f%%)", message, percentage)
+          end
+          return message
         end,
         client_format = function(client_name, spinner, series_messages)
           if client_name == "null-ls" then
@@ -269,6 +272,11 @@ require("lazy").setup({
           },
         }
       end,
+    },
+    {
+      "nmac427/guess-indent.nvim",
+      event = { "BufReadPost", "BufNewFile" },
+      config = true,
     },
     {
       "windwp/nvim-autopairs",
@@ -342,7 +350,7 @@ require("lazy").setup({
               end
             end
 
-            return " " .. table.concat(provider_names, ", ")
+            return " " .. table.concat(provider_names, " ")
           end,
           cond = function()
             return
