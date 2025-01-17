@@ -5,6 +5,7 @@ vim.opt.runtimepath:prepend(lazy_path)
 vim.opt.number = true
 vim.opt.shiftwidth = 4
 vim.opt.expandtab = true
+vim.opt.softtabstop = -1
 vim.opt.cursorline = true
 vim.opt.display = "lastline,uhex"
 vim.opt.listchars = "space:·,tab:↦ ,nbsp:␣,eol:↵"
@@ -276,7 +277,16 @@ require("lazy").setup({
     {
       "nmac427/guess-indent.nvim",
       event = { "BufReadPost", "BufNewFile" },
-      config = true,
+      opts = {
+        on_tab_options = {
+          expandtab = false,
+          shiftwidth = "detected",
+        },
+        on_space_options = {
+          expandtab = true,
+          shiftwidth = "detected",
+        },
+      },
     },
     {
       "windwp/nvim-autopairs",
@@ -491,7 +501,12 @@ require("lazy").setup({
 })
 
 vim.api.nvim_create_autocmd("BufRead", {
-  command = [[silent! normal! g'"]],
+  callback = function()
+    if vim.bo.filetype == "gitcommit" then
+      return
+    end
+    vim.cmd([[silent! normal! g'"]])
+  end,
 })
 
 vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "WinEnter", "CmdWinEnter" }, {
