@@ -278,10 +278,6 @@ require("lazy").setup({
       "nmac427/guess-indent.nvim",
       event = { "BufReadPost", "BufNewFile" },
       opts = {
-        on_tab_options = {
-          expandtab = false,
-          shiftwidth = "detected",
-        },
         on_space_options = {
           expandtab = true,
           shiftwidth = "detected",
@@ -543,7 +539,11 @@ vim.api.nvim_create_autocmd("FileType", {
       if vim.fn.executable("clangd") ~= 0 then
         require("lspconfig").clangd.setup({
           capabilities = capabilities,
-          cmd = { "clangd", "--completion-style=detailed" },
+          cmd = {
+            "clangd",
+            "--log=error",
+            "--completion-style=detailed",
+          },
         })
       end
     elseif vim.bo.filetype == "lua" then
