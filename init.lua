@@ -496,12 +496,10 @@ require("lazy").setup({
   },
 })
 
-vim.api.nvim_create_autocmd("BufRead", {
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "lua",
   callback = function()
-    if vim.bo.filetype == "gitcommit" then
-      return
-    end
-    vim.cmd([[silent! normal! g'"]])
+    vim.opt_local.shiftwidth = 2
   end,
 })
 
@@ -512,6 +510,15 @@ vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "WinEnter", "CmdWinEnte
     else
       vim.opt_local.laststatus = 2
     end
+  end,
+})
+
+vim.api.nvim_create_autocmd("BufRead", {
+  callback = function()
+    if vim.bo.filetype == "gitcommit" then
+      return
+    end
+    vim.cmd([[silent! normal! g'"]])
   end,
 })
 
@@ -527,65 +534,100 @@ vim.api.nvim_create_autocmd("CursorHold", {
   end,
 })
 
+local function client_capabilities()
+  return vim.tbl_deep_extend(
+    "force",
+    vim.lsp.protocol.make_client_capabilities(),
+    require("cmp_nvim_lsp").default_capabilities(),
+    {
+      offsetEncoding = "utf-16",
+    }
+  )
+end
+
 vim.api.nvim_create_autocmd("FileType", {
+  pattern = "lua",
+  once = true,
   callback = function()
-    if vim.bo.filetype == "lua" then
-      vim.opt_local.shiftwidth = 2
-    end
-
-    local capabilities = require("cmp_nvim_lsp").default_capabilities()
-
-    if vim.bo.filetype == "c" or vim.bo.filetype == "cpp" then
-      if vim.fn.executable("clangd") ~= 0 then
-        require("lspconfig").clangd.setup({
-          capabilities = capabilities,
-          cmd = {
-            "clangd",
-            "--log=error",
-            "--completion-style=detailed",
-          },
-        })
-      end
-    elseif vim.bo.filetype == "lua" then
-      if vim.fn.executable("lua-language-server") ~= 0 then
-        require("lspconfig").lua_ls.setup({
-          capabilities = capabilities,
-          settings = {
-            Lua = {
-              runtime = {
-                version = "LuaJIT",
-              },
-              workspace = {
-                checkThirdParty = false,
-                library = {
-                  vim.env.VIMRUNTIME,
-                },
+    if vim.fn.executable("lua-language-server") ~= 0 then
+      local lua_ls = require("lspconfig").lua_ls
+      lua_ls.setup({
+        capabilities = client_capabilities(),
+        settings = {
+          Lua = {
+            runtime = {
+              version = "LuaJIT",
+            },
+            workspace = {
+              checkThirdParty = false,
+              library = {
+                vim.env.VIMRUNTIME,
               },
             },
           },
-        })
-      end
-    elseif vim.bo.filetype == "python" then
-      if vim.fn.executable("basedpyright-langserver") ~= 0 then
-        require("lspconfig").basedpyright.setup({
-          capabilities = capabilities,
-        })
-      elseif vim.fn.executable("pyright-langserver") ~= 0 then
-        require("lspconfig").pyright.setup({
-          capabilities = capabilities,
-        })
-      end
-      if vim.fn.executable("ruff-lsp") ~= 0 then
-        require("lspconfig").ruff_lsp.setup({
-          capabilities = capabilities,
-        })
-      end
-    elseif vim.bo.filetype == "rust" then
-      if vim.fn.executable("rust-analyzer") ~= 0 then
-        require("lspconfig").rust_analyzer.setup({
-          capabilities = capabilities,
-        })
-      end
+        },
+      })
+      lua_ls.launch()
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "c", "cpp" },
+  once = true,
+  callback = function()
+    if vim.fn.executable("clangd") ~= 0 then
+      local clangd = require("lspconfig").clangd
+      clangd.setup({
+        capabilities = client_capabilities(),
+        cmd = {
+          "clangd",
+          "--log=error",
+          "--completion-style=detailed",
+        },
+      })
+      clangd.launch()
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "python",
+  once = true,
+  callback = function()
+    if vim.fn.executable("basedpyright-langserver") ~= 0 then
+      local basedpyright = require("lspconfig").basedpyright
+      basedpyright.setup({
+        capabilities = client_capabilities(),
+      })
+      basedpyright.launch()
+    elseif vim.fn.executable("pyright-langserver") ~= 0 then
+      local pyright = require("lspconfig").pyright
+      pyright.setup({
+        capabilities = client_capabilities(),
+      })
+      pyright.launch()
+    end
+    if vim.fn.executable("ruff") ~= 0 then
+      local ruff = require("lspconfig").ruff
+      ruff.setup({
+        capabilities = client_capabilities(),
+      })
+      ruff.launch()
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "rust",
+  once = true,
+  callback = function()
+    if vim.fn.executable("rust-analyzer") ~= 0 then
+      local rust_analyzer = require("lspconfig").rust_analyzer
+      rust_analyzer.setup({
+        capabilities = client_capabilities(),
+      })
+      rust_analyzer.launch()
     end
   end,
 })
@@ -649,5 +691,14 @@ vim.api.nvim_create_autocmd("LspAttach", {
 
       toggle_inlay_hints()
     end
+  end,
+})
+
+vim.api.nvim_create_autocmd("LspDetach", {
+  callback = function(args)
+    vim.api.nvim_clear_autocmds({
+      group = "documentHighlight",
+      buffer = args.buf,
+    })
   end,
 })
