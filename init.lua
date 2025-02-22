@@ -122,9 +122,12 @@ require("lazy").setup({
       ft = {
         "c",
         "cpp",
+        "json",
         "lua",
         "python",
         "rust",
+        "toml",
+        "yaml",
       },
     },
     {
@@ -558,18 +561,51 @@ local function client_capabilities()
     vim.lsp.protocol.make_client_capabilities(),
     require("cmp_nvim_lsp").default_capabilities(),
     {
-      offsetEncoding = "utf-16",
+      offsetEncoding = { "utf-16" },
     }
   )
 end
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "c", "cpp" },
+  once = true,
+  callback = function()
+    if vim.fn.executable("clangd") ~= 0 then
+      local server = require("lspconfig").clangd
+      server.setup({
+        capabilities = client_capabilities(),
+        cmd = {
+          "clangd",
+          "--log=error",
+          "--completion-style=detailed",
+        },
+      })
+      server.launch()
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "json",
+  once = true,
+  callback = function()
+    if vim.fn.executable("vscode-json-language-server") ~= 0 then
+      local server = require("lspconfig").jsonls
+      server.setup({
+        capabilities = client_capabilities(),
+      })
+      server.launch()
+    end
+  end,
+})
 
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "lua",
   once = true,
   callback = function()
     if vim.fn.executable("lua-language-server") ~= 0 then
-      local lua_ls = require("lspconfig").lua_ls
-      lua_ls.setup({
+      local server = require("lspconfig").lua_ls
+      server.setup({
         capabilities = client_capabilities(),
         settings = {
           Lua = {
@@ -585,26 +621,7 @@ vim.api.nvim_create_autocmd("FileType", {
           },
         },
       })
-      lua_ls.launch()
-    end
-  end,
-})
-
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "c", "cpp" },
-  once = true,
-  callback = function()
-    if vim.fn.executable("clangd") ~= 0 then
-      local clangd = require("lspconfig").clangd
-      clangd.setup({
-        capabilities = client_capabilities(),
-        cmd = {
-          "clangd",
-          "--log=error",
-          "--completion-style=detailed",
-        },
-      })
-      clangd.launch()
+      server.launch()
     end
   end,
 })
@@ -614,24 +631,24 @@ vim.api.nvim_create_autocmd("FileType", {
   once = true,
   callback = function()
     if vim.fn.executable("basedpyright-langserver") ~= 0 then
-      local basedpyright = require("lspconfig").basedpyright
-      basedpyright.setup({
+      local server = require("lspconfig").basedpyright
+      server.setup({
         capabilities = client_capabilities(),
       })
-      basedpyright.launch()
+      server.launch()
     elseif vim.fn.executable("pyright-langserver") ~= 0 then
-      local pyright = require("lspconfig").pyright
-      pyright.setup({
+      local server = require("lspconfig").pyright
+      server.setup({
         capabilities = client_capabilities(),
       })
-      pyright.launch()
+      server.launch()
     end
     if vim.fn.executable("ruff") ~= 0 then
-      local ruff = require("lspconfig").ruff
-      ruff.setup({
+      local server = require("lspconfig").ruff
+      server.setup({
         capabilities = client_capabilities(),
       })
-      ruff.launch()
+      server.launch()
     end
   end,
 })
@@ -641,11 +658,39 @@ vim.api.nvim_create_autocmd("FileType", {
   once = true,
   callback = function()
     if vim.fn.executable("rust-analyzer") ~= 0 then
-      local rust_analyzer = require("lspconfig").rust_analyzer
-      rust_analyzer.setup({
+      local server = require("lspconfig").rust_analyzer
+      server.setup({
         capabilities = client_capabilities(),
       })
-      rust_analyzer.launch()
+      server.launch()
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "toml",
+  once = true,
+  callback = function()
+    if vim.fn.executable("taplo") ~= 0 then
+      local server = require("lspconfig").taplo
+      server.setup({
+        capabilities = client_capabilities(),
+      })
+      server.launch()
+    end
+  end,
+})
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "yaml",
+  once = true,
+  callback = function()
+    if vim.fn.executable("yaml-language-server") ~= 0 then
+      local server = require("lspconfig").yamlls
+      server.setup({
+        capabilities = client_capabilities(),
+      })
+      server.launch()
     end
   end,
 })
