@@ -446,6 +446,18 @@ require("lazy").setup({
         defaults = {
           sorting_strategy = "ascending",
         },
+        pickers = {
+          find_files = {
+            find_command = {
+              "fd",
+              "--color=never",
+              "--type=f",
+              "--hidden",
+              "--no-ignore-vcs",
+              "--exclude=.git",
+            },
+          },
+        },
       },
     },
     {
@@ -466,6 +478,12 @@ require("lazy").setup({
             show_separator_on_edge = true,
           },
           filesystem = {
+            filtered_items = {
+              visible = true,
+              never_show = {
+                ".git",
+              },
+            },
             follow_current_file = { enabled = true },
           },
         })
