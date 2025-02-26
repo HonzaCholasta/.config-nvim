@@ -24,12 +24,10 @@ vim.keymap.set("v", [[d]], [["_d]])
 vim.keymap.set("v", [[<S-Up>]], [[:move '<-2<CR>gv=gv]], { silent = true })
 vim.keymap.set("v", [[<S-Down>]], [[:move '>+1<CR>gv=gv]], { silent = true })
 
-vim.keymap.set("n", [[K]], [[<Cmd>Lspsaga hover_doc<CR>]])
 vim.keymap.set("n", [[<Leader>c]], [[<Cmd>bdelete<CR>]])
 vim.keymap.set("n", [[<Leader>h]], [[<Cmd>nohlsearch<CR>]])
-vim.keymap.set("n", [[<Leader>la]], [[<Cmd>Lspsaga code_action<CR>]])
 vim.keymap.set("n", [[<Leader>lf]], vim.lsp.buf.format)
-vim.keymap.set("n", [[<Leader>lr]], [[<Cmd>Lspsaga rename<CR>i<End>]])
+vim.keymap.set("n", [[<Leader>lr]], vim.lsp.buf.rename)
 
 vim.keymap.set("n", [[<Leader>gr]], [[<Cmd>Gitsigns reset_hunk<CR>]])
 vim.keymap.set("n", [[<Leader>gs]], [[<Cmd>Gitsigns stage_hunk<CR>]])
@@ -152,83 +150,19 @@ require("lazy").setup({
       end,
     },
     {
-      "nvimdev/lspsaga.nvim",
+      "aznhe21/actions-preview.nvim",
       dependencies = {
-        "nvim-treesitter/nvim-treesitter",
-        "nvim-tree/nvim-web-devicons",
+        "nvim-telescope/telescope.nvim",
       },
-      cmd = "Lspsaga",
-      event = "LspAttach",
-      opts = {
-        ui = {
-          border = "rounded",
-          code_action = "",
-        },
-        code_action = {
-          num_shortcut = false,
-          show_server_name = true,
-          keys = {
-            quit = [[<Esc>]],
-          },
-        },
-        lightbulb = {
-          virtual_text = false,
-          ignore = {
-            clients = { "null-ls" },
-          },
-        },
-        rename = {
-          in_select = false,
-          keys = {
-            quit = [[<Esc>]],
-          },
-        },
-        symbol_in_winbar = {
-          enable = false,
+      keys = {
+        {
+          [[<Leader>la]],
+          function()
+            require("actions-preview").code_actions()
+          end,
         },
       },
-    },
-    {
-      "linrongbin16/lsp-progress.nvim",
-      opts = {
-        series_format = function(title, message, percentage, done)
-          if done then
-            percentage = 100
-          end
-          if message and message ~= "" then
-            if title and title ~= "" then
-              message = title .. " " .. message
-            end
-          else
-            if title and title ~= "" then
-              message = title
-            else
-              return
-            end
-          end
-          if percentage then
-            message = string.format("%s (%.0f%%)", message, percentage)
-          end
-          return message
-        end,
-        client_format = function(client_name, spinner, series_messages)
-          if client_name == "null-ls" then
-            series_messages = vim.tbl_filter(function(series_message)
-              return not vim.startswith(series_message, "code_action")
-            end, series_messages)
-          end
-          if #series_messages == 0 then
-            return
-          end
-          return spinner .. " " .. series_messages[#series_messages]
-        end,
-        format = function(client_messages)
-          if #client_messages == 0 then
-            return ""
-          end
-          return client_messages[#client_messages]
-        end,
-      },
+      config = true,
     },
     {
       "nvim-treesitter/nvim-treesitter",
@@ -312,6 +246,14 @@ require("lazy").setup({
       },
     },
     {
+      "folke/noice.nvim",
+      dependencies = {
+        "MunifTanjim/nui.nvim",
+        "rcarriga/nvim-notify",
+      },
+      config = true,
+    },
+    {
       "akinsho/bufferline.nvim",
       version = "*",
       dependencies = {
@@ -330,7 +272,6 @@ require("lazy").setup({
       "nvim-lualine/lualine.nvim",
       dependencies = {
         "nvim-tree/nvim-web-devicons",
-        "linrongbin16/lsp-progress.nvim",
       },
       opts = function()
         local providers = {
@@ -368,8 +309,6 @@ require("lazy").setup({
           end,
         }
 
-        local lsp_progress = require("lsp-progress").progress
-
         local function indent()
           return (vim.bo.expandtab and "␣" or "↹") .. " " .. vim.fn.shiftwidth()
         end
@@ -390,7 +329,7 @@ require("lazy").setup({
           },
           sections = {
             lualine_b = {},
-            lualine_c = { indent, "filetype", providers, lsp_progress },
+            lualine_c = { indent, "filetype", providers },
             lualine_x = { "diagnostics", diff, "branch" },
             lualine_y = {},
           },
@@ -456,7 +395,6 @@ require("lazy").setup({
               "--color=never",
               "--type=f",
               "--hidden",
-              "--no-ignore-vcs",
               "--exclude=.git",
             },
           },
@@ -481,12 +419,6 @@ require("lazy").setup({
             show_separator_on_edge = true,
           },
           filesystem = {
-            filtered_items = {
-              visible = true,
-              never_show = {
-                ".git",
-              },
-            },
             follow_current_file = { enabled = true },
           },
         })
