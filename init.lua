@@ -13,6 +13,7 @@ vim.opt.signcolumn = "yes"
 vim.opt.whichwrap = "b,s,<,>,[,]"
 vim.opt.wrap = false
 vim.opt.updatetime = 500
+vim.opt.winborder = "rounded"
 
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
@@ -518,8 +519,7 @@ vim.api.nvim_create_autocmd("FileType", {
   once = true,
   callback = function()
     if vim.fn.executable("clangd") ~= 0 then
-      local server = require("lspconfig").clangd
-      server.setup({
+      vim.lsp.config("clangd", {
         capabilities = client_capabilities(),
         cmd = {
           "clangd",
@@ -527,7 +527,7 @@ vim.api.nvim_create_autocmd("FileType", {
           "--completion-style=detailed",
         },
       })
-      server.launch()
+      vim.lsp.enable({"clangd"})
     end
   end,
 })
@@ -537,11 +537,10 @@ vim.api.nvim_create_autocmd("FileType", {
   once = true,
   callback = function()
     if vim.fn.executable("vscode-json-language-server") ~= 0 then
-      local server = require("lspconfig").jsonls
-      server.setup({
+      vim.lsp.config("jsonls", {
         capabilities = client_capabilities(),
       })
-      server.launch()
+      vim.lsp.enable({"jsonls"})
     end
   end,
 })
@@ -551,8 +550,7 @@ vim.api.nvim_create_autocmd("FileType", {
   once = true,
   callback = function()
     if vim.fn.executable("lua-language-server") ~= 0 then
-      local server = require("lspconfig").lua_ls
-      server.setup({
+      vim.lsp.config("lua_ls", {
         capabilities = client_capabilities(),
         settings = {
           Lua = {
@@ -568,7 +566,7 @@ vim.api.nvim_create_autocmd("FileType", {
           },
         },
       })
-      server.launch()
+      vim.lsp.enable({"lua_ls"})
     end
   end,
 })
@@ -578,24 +576,21 @@ vim.api.nvim_create_autocmd("FileType", {
   once = true,
   callback = function()
     if vim.fn.executable("basedpyright-langserver") ~= 0 then
-      local server = require("lspconfig").basedpyright
-      server.setup({
+      vim.lsp.config("basedpyright", {
         capabilities = client_capabilities(),
       })
-      server.launch()
+      vim.lsp.enable({"basedpyright"})
     elseif vim.fn.executable("pyright-langserver") ~= 0 then
-      local server = require("lspconfig").pyright
-      server.setup({
+      vim.lsp.config("pyright", {
         capabilities = client_capabilities(),
       })
-      server.launch()
+      vim.lsp.enable({"pyright"})
     end
     if vim.fn.executable("ruff") ~= 0 then
-      local server = require("lspconfig").ruff
-      server.setup({
+      vim.lsp.config("ruff", {
         capabilities = client_capabilities(),
       })
-      server.launch()
+      vim.lsp.enable({"ruff"})
     end
   end,
 })
@@ -605,11 +600,10 @@ vim.api.nvim_create_autocmd("FileType", {
   once = true,
   callback = function()
     if vim.fn.executable("rust-analyzer") ~= 0 then
-      local server = require("lspconfig").rust_analyzer
-      server.setup({
+      vim.lsp.config("rust_analyzer", {
         capabilities = client_capabilities(),
       })
-      server.launch()
+      vim.lsp.enable({"rust_analyzer"})
     end
   end,
 })
@@ -619,11 +613,10 @@ vim.api.nvim_create_autocmd("FileType", {
   once = true,
   callback = function()
     if vim.fn.executable("taplo") ~= 0 then
-      local server = require("lspconfig").taplo
-      server.setup({
+      vim.lsp.config("taplo", {
         capabilities = client_capabilities(),
       })
-      server.launch()
+      vim.lsp.enable({"taplo"})
     end
   end,
 })
@@ -633,11 +626,10 @@ vim.api.nvim_create_autocmd("FileType", {
   once = true,
   callback = function()
     if vim.fn.executable("yaml-language-server") ~= 0 then
-      local server = require("lspconfig").yamlls
-      server.setup({
+      vim.lsp.config("yamlls", {
         capabilities = client_capabilities(),
       })
-      server.launch()
+      vim.lsp.enable({"yamlls"})
     end
   end,
 })
