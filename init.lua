@@ -167,8 +167,9 @@ require("lazy").setup({
     },
     {
       "nvim-treesitter/nvim-treesitter",
+      branch = "main",
       build = ":TSUpdate",
-      main = "nvim-treesitter.configs",
+      main = "nvim-treesitter",
       opts = {
         auto_install = vim.fn.executable("tree-sitter") ~= 0,
         highlight = { enable = true },
